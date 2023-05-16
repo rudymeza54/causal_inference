@@ -1,0 +1,537 @@
+---
+Name: 'Rudy Meza'
+title: "Regression Discontinuity Lab"
+output:
+  html_document:
+    code_folding: hide
+    theme: readable
+    df_print: paged
+    highlight: tango
+    toc: yes
+    toc_float: no
+    css: 'css/lab-instructions.css'
+    includes:
+      after_body: 'footer.html'
+--- 
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set( echo = TRUE, message=F, warning=F, fig.width = 10, fig.pos = 'H' )
+```
+
+
+```{r, echo=FALSE, results="hide"}
+library( stargazer )
+library( dplyr )
+library( pander )
+library(tidyverse)
+```
+
+# Overview 
+
+There are **4 sets of questions** to be answered. You can get up to 100 points + bonus questions. Points are indicated next to each question. 
+
+Remember to:
+
+* Format your table using stargazer 
+* Submit the r markdown file with all your codes. 
+* Bold your answers.
+
+
+
+## The policy problem
+
+> **Research question**: 
+> Does summmer school improves low-achieving students' grades?
+
+Summer school programs are designed to help students [improve their reading and math ability](https://www.wallacefoundation.org/knowledge-center/documents/an-analysis-of-the-effects-of-an-academic-summer-program-for-middle-school-students.pdf). They are generallly [dedicated to students who have not yet achieved the skills required by the next level](https://digitalcommons.nl.edu/cgi/viewcontent.cgi?article=1234&context=diss). There are, however, mixed evidence on [whether summer school works](https://www.npr.org/sections/ed/2014/07/07/323659124/what-we-dont-know-about-summer-school). 
+
+For this lab, we are interested in testing the following:
+
+> **Hypothesis**: 
+> Students who attend summer school will achieve higher grades the following year. 
+
+## Data
+
+For this lab you will use the **regression-discontinuity-lab.csv** dataset. 
+
+```{r, echo = T}
+URL <- "https://raw.githubusercontent.com/DS4PS/pe4ps-textbook/master/labs/DATA/regression-discontinuity-lab.csv"
+data <- read.csv( URL, stringsAsFactors=F )
+```
+
+```{r, echo=F}
+head( data ) %>% pander()
+```
+
+The synthetic data contains observations on 1,000 high school students from a US public school system. Students that failed to demonstrate what the district deemed to be mathematical foundations necessary to be successful in high school were required to participate in a summer school program after 8th grade before their first year in high school (9th grade). A score of 60 or above on the 8th grade standardized math exam was deemed competent, a score below 60 resulted in summer school. 
+
+We want to understand whether attending summer school district improved student performance in math, measured by student math GPAs at the end of 9th-grade.
+
+The dataset that the school principal provides you contains four variables: 
+
+ **Variable name   **   | **Description    **                                                                                          
+----------------------- | ------------------------------------------------------------------------------------------------------------
+math_7              | Score on standardized math exam at the end of 7th-grade, from 0 to 100                                                                     
+gpa_8                   | Math GPA during the 8th-grade academic year (prior to summer school), from 0 to 4
+math_8              | Score on standardized math exam at the end of 8th-grade, from 0 to 100                                                                     
+gpa_9                   | Math GPA during the 9th-grade academic year (following summer school), from 0 to 4
+
+You propose to use a regression discontinuity method to analyze the impact of summer school on students' grades.
+
+# Lab Questions
+
+## Q1: 
+
+**Let's start by discussing why regression discontinuity is the right approach here** 
+
+* **Q1a:** Create a treatment dummy variable that is coded 1 for students that scored below a 60 on the 8th grade standardized math exam, and 0 otherwise. (5 points)
+
+\
+
+* **Answer:Q1a:** 
+
+\
+
+```{r}
+
+data_one<-data%>%
+  mutate( treat_dummy = ifelse(math_8 < 60,1,0))
+
+head(data_one)
+
+```
+
+\
+
+* **Q1b:** Calculate the mean GPA for the treatment and the control group in 9th grade. Is there a statistically significant difference? (5 + 5 points)
+
+\
+
+* **Answer: Q1b:**
+
+
+```{r}
+
+data_one %>%
+  group_by(treat_dummy)%>%
+  summarise(
+    mean_9 = mean(gpa_9,na.rm=T)
+  )
+
+
+```
+
+
+
+```{r}
+options(scipen=999)
+t.test(data_one$gpa_9, data_one$treat_dummy)
+
+ggplot(data_one) +
+  aes(x = gpa_9, fill = treat_dummy) +
+  geom_density(adjust = 1L) +
+  scale_fill_gradient() +
+  theme_minimal() +
+  facet_wrap(vars(treat_dummy))+
+  xlab("GPA for 9th Grades")
+
+
+```
+
+\
+
+The means for the treatment and control groups for 9th graders gpa are as followed:
+
+Treatment: **~1.7**
+
+Control : **~2.9**
+
+
+From the t-test we see there is a significant difference between the treatment and control groups GPA's.
+
+
+* **Q1c:** What does this suggest about the effect of the treatment (attending summer school)? (5 points)
+
+* **Answer: Q1c:**
+
+This would suggest that the treatment didn't have an effect.
+
+
+* **Q1d:** Plot the relationship between standardized math scores in the 7th grade and the math GPA in 8th grade. Compare the mean 8th grade math GPA for students that scored above and below 60 on the 7th grade standardized exam. Is there a statistically significant difference? Note that this data all comes from the pre-treatment period. (5 + 5 points)
+
+
+
+* **Answer: Q1d:**
+
+
+```{r}
+reg<-lm(gpa_8 ~ math_7, data = data_one)
+
+predfit <- predict( reg, data_one ) 
+
+
+
+# Plot our observed value
+plot( data_one$math_7, data$gpa_8, cex=2,
+      col=NULL, pch=19, bty="n",
+      xlab="Standardized Math Scores (7th Grade)", 
+      ylab="Math GPA (8th Grade)")
+
+# Plot our predicted values
+points(predfit, col="black", cex=0.8, pch = 19 )
+
+
+
+```
+
+\
+
+```{r}
+
+subset_one<-data_one%>%
+  filter(treat_dummy == 0)%>%
+  mutate(test_7th = ifelse(math_7 < 60,0,1))
+
+
+head(subset_one)
+
+```
+
+\
+
+## Compare 8th Grade GPA's
+
+```{r}
+
+t.test(subset_one$math_8,subset_one$test_7th)
+
+
+```
+
+We see a huge difference in means for 8th grade GPA's in the pre-treatment period.
+
+* **Q1e:** Looking at the results from Q1d, do we still trust the results form Q1b? Why? (10 points)
+
+
+* **Answer: Q1e:** 
+
+**Yes.** We won't be able to truly recognize the impact of achieving higher grades following summer school because it's not an apples to apples comparison. IF we focus more on the "Cutoff" point comparison, this allows more of an appropriate comparison for individuals who are closely gathered above or below the "Cutoff Point".
+
+\
+
+
+## Q2: 
+
+Now prepare your data for the analysis:
+
+* **Q2a:** Write the formula for the regression discontinuity model with this data. (5 points)
+
+* **Answer:Q2a:**
+
+$$\begin{equation} 
+\text{Y_gpa_9th} = \beta_0 + \beta_1*Treatment + \beta_2*8thvariable_c + \text{e}
+\end{equation}$$
+
+
+
+
+* **Q2b:** Create the 8th grade standardized test variable centered on the summer school cutoff score. (5 points)
+
+* **Answer: Q2b:**
+
+
+```{r}
+
+subset_two<-data_one%>%
+  mutate(math_8_c = (math_8 -60))
+
+```
+
+
+## Q3: 
+
+Once data are ready, you can estimate the regression discontinuity model. Pay attention to include the correct variables.
+
+* **Q3a:** Provide the model output in stargazer. (5 + 5 points)
+
+
+* **Answer: Q3a:**
+
+```{r, results='asis'}
+
+reg <- lm( gpa_9 ~ treat_dummy + 
+             math_8_c, data = subset_two )
+
+stargazer( reg, 
+           type = "html", 
+           dep.var.labels = ("GPA in 9th Grade"),
+           column.labels = c(""),
+           covariate.labels = c("Treatment", "8th Grade Centered"),
+           omit.stat = "all", 
+           digits = 2 )
+
+```
+
+
+* **Q3b:** Which coefficient tests the hypothesis of this study? (5 points)
+
+* **Answer: Q3b:**
+
+
+The coefficient B1 tests the hypothesis that summer school will increase academic performance the following year.
+
+* **Q3c:** Can you conclude that summer school is effective in improving the math GPA of low achieving students? How big is the effect? Is it significant? (5 points for each question, total 15 points)
+
+
+* **Answer: Q3c:**
+
+From the output, we can see that the treatment variable does show improvement and is effective with statistical significance. 
+
+
+**9th Grade GPA is improved by .21**
+
+
+
+## Q4: 
+
+Examine the counterfactual.
+
+* **Q4a:** For each additional point a student obtains on the standardized math exam, on average what is the corresponding increase in their 9th grade math GPA? (5 points)
+
+* **Answer: Q4a:** 
+
+On average, the corresponding increase in a students **9th Grade GPA is .21**
+
+
+* **Q4b:** What is the predicted 9th grade math GPA of a student whose 8th grade standardized test score is equal to 60 (the cutoff)? (5 points)
+
+* **Answer: Q4b:**
+
+```{r}
+reg$coefficients
+
+2.06462798
+
+```
+\
+
+B0 represents the predicted value of a 9th grader GPA with 8th grade standard score at 60.
+
+**B0 is 2.06462798**
+
+
+* **Q4c:** What about the same student, except now they have attended summer school? What is their predicted math GPA in 9th grade? (5 points)
+
+* **Answer: Q4c:**
+
+For a student who recieved the treatment:
+
+The score is **~2.31**
+
+* **Q4d:** Do we expect students that scored a 59 on the standardized exam and students that score a 19 to both benefit from summer school? Does the model allow for differences in response to the treatment? What are the predicted GPA gains for a student that scored 19 on the exam? (5 points)
+
+* **Answer: Q4d:** 
+
+We expect both students to benefit from summer school. The treatment variable does test the differences. In this case, the treatment is different and statistically significant from those who didn't receive the treatment. For a student that scored a 19 on the exam, the predicted gains would be **~3.03 GPA**.
+
+```{r}
+19*0.04+2.06+.21
+
+```
+
+
+
+
+
+## BONUS QUESTION 1: 
+
+**What is the purpose of including the rating / score variable in the model? (3 points)**
+
+* **BQ1a:** Run the model without the rating / score variable.
+
+```{r, results = 'asis'}
+reg2<-lm(gpa_9 ~ treat_dummy + 
++              math_8, data = subset_two)
+
+stargazer( reg,reg2, 
+           type = "html", 
+           dep.var.labels = ("GPA in 9th Grade"),
+           column.labels = c(""),
+           covariate.labels = c("Treatment", "8th Grade Centered", "8th Grade"),
+           omit.stat = "all", 
+           digits = 2 )
+```
+
+
+* **BQ1b:** What does the intercept represent? 
+
+* **Answer: BQ1b:**
+
+The intercept will represent GPA's at the cutoff, or with a 0 on the standardized test.
+
+
+* **BQ1c:** What does the Treatment coefficient represent? 
+
+* **Answer: BQ1c:**
+
+The treatment coefficient represents going to summer school for either model.
+
+* **BQ1d:** What is the model without the score variable testing? Explain the counterfactual.
+
+
+* **Answer: BQ1d:**
+
+When the treatment variable is 0, the model explains the final 9th grade GPA had the summer school policy not been implemented.
+
+
+
+* **BQ1e:** What is the average 9th grade math GPA of the treatment group? What would the average have been if the district had not offered summer school? 
+
+
+* **Answer: BQ1e:**
+
+The average 9th grade math GPA for the treatment group is **~2.31**
+
+
+The average 9th grade math GPA for the control  group is **~2.10**
+
+
+## BONUS QUESTION 2:
+
+The regression discontinuity model is powerful in instances where program participation is determined by some qualification criteria that is measured using a numeric scale (e.g. a test score or a means-test for social services using income), and we only have performance data from the post-treatment period. In these instances the post-test only estimate would be extremely biased since the treatment and control groups represented high and low performers prior to the treatment. The RDD uses the selection criteria and eligibility cut-off score to mitigate the bias. Thus it might be the ONLY way to get a clean estimate of program impact in these circumstances. 
+
+In this lab we have GPA data from before and after the treatment period (8th grade and 9th grade math GPAs). As a result, we can also run a difference-in-difference model to estimate the impact of summer school on 9th grade math performance. 
+
+**Run a difference-in-difference model and compare results with the RDD models above. (7 points)**
+
+* **BQ2a:** To run the difference-in-difference model you need to stack the performance data. Create a subset of data with the 8th grade GPA and the treatment dummy. Add a post-treatment dummy coded 0 for all of these cases. Create another subset with 9th grade GPA and the treatment dummy. Add a post-treatment dummy coded 1 for all of these cases. Rename both GPA variables to "gpa", then stack these two data frames (try **rbind()** for "row bind"). Create your treat_x_post dummy.
+
+* **Answer: BQ2a:**
+
+```{r}
+
+subset_three<-data_one%>%
+  select("gpa" = gpa_8, treat_dummy)%>%
+  mutate(post_treatment = 0)
+
+subset_four<-data_one%>%
+  select("gpa"=gpa_9, treat_dummy)%>%
+  mutate(post_treatment = 1)
+
+main<-rbind(subset_three,subset_four)
+
+```
+
+
+
+```{r, results = "asis"}
+
+dd<-lm(gpa ~ treat_dummy+post_treatment+treat_dummy*post_treatment, data = main)
+stargazer( dd, 
+           type = "html", 
+           dep.var.labels = ("GPA"),
+           column.labels = c(""),
+           covariate.labels = c("Treatment", "post-Treatment", "Treatment x Post"),
+           omit.stat = "all", 
+           digits = 2 )
+
+```
+
+\
+
+* **BQ2b** Run a difference-in-difference model and report your results. 
+* **BQ2c** Is the estimate of the program impact (**B3**) consistent with the RDD model? 
+* **Answer: BQ2c**
+
+**B3** for the DD Model is consistent with the RDD Model of **~.21**
+
+* **BQ2d** Is the counterfactual for the treatment group without summer school (**B0+B1+B2**) consistent with the RDD data?
+
+
+```{r}
+
+
+2.86-1.39-.002377
+2.06+.04
+
+```
+
+We get different numbers for the counterfactual with **~1.48** for the DD counterfactual.
+
+The RDD Counterfactual is **~2.1**
+
+\
+
+
+```{css, echo=F}
+p {
+color: black;
+margin: 0 0 20px 0;
+}
+
+td {
+    padding: 3px 10px 3px 10px;
+}
+
+p.caption {
+    text-align: center;
+    font-style: italic;
+}
+
+table
+{ 
+    margin-left: auto;
+    margin-right: auto;
+    margin-top:80px;
+    margin-bottom:100px;
+}
+
+h1, h2{
+  margin-top:100px;
+  margin-bottom:20px;
+}
+
+H5{
+    text-align: center;
+    color: gray;
+    font-size:0.8em;
+}
+
+img {
+    max-width: 90%;
+    display: block;
+    margin-right: auto;
+    margin-left: auto;
+    margin-top:30px;
+    margin-bottom:20px;
+}
+
+pre {
+  overflow-x: auto;
+}
+
+pre code {
+   display: block; 
+   padding: 0.5em;
+   margin-bottom:20px;
+}
+
+code {
+  font-size: 92%;
+  border: 10px solid #F8F8F8;
+  margin-bottom: 2px;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+
+caption {
+  font-style: bold;
+}
+
+```

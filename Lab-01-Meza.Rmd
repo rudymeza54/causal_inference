@@ -1,0 +1,716 @@
+---
+Name: 'Rudy Meza'
+title: "Interrupted Time Series LAB"
+output:
+  html_document:
+    theme: readable
+    df_print: paged
+    highlight: tango
+    toc: yes
+    toc_float: no
+    css: 'css/lab-instructions.css'
+    includes:
+      after_body: 'footer.html'
+      
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=F, warning=F, fig.width = 10, fig.pos = 'H')
+```
+
+```{r, echo=FALSE, results="hide"}
+library( stargazer )
+library( dplyr )
+library( pander )
+library(broom)
+library(tidyverse)
+library(gridExtra)
+library(scales)
+library(coefplot)
+library(fixest)
+library(modelsummary)
+library(estimatr)
+
+```
+
+
+# Instructions 
+
+There are **4 sets of questions** to be answered. You can earn up to 100 points + bonus questions. Points are indicated next to each question. 
+
+
+
+
+## The policy problem
+
+> **RESEARCH QUESTION: Does an increase in bus frequency affect bus ridership in City A?** 
+
+Several cities aim to support public transportation and increase ridership. There are several ways to encourage residents to utilize public transportation more often; one of those is to modify the transit schedule so as to increase the frequency of buses in peak times and reduce waiting time.
+
+City A has opted for this solution and starting from May 1st has implemented a new bus schedule which increases bus frequency. At the end of the year, the mayor wants to estimate whether the decision was effective and ask you to analyze one year of ridership data to test the following hypothesis: 
+
+> **HYPOTHESIS: An increase in bus frequency has a positive effect on bus ridership in City A (i.e., the new schedule is effective).**
+
+## Data
+
+Data on ridership were provided by the local transit agency. The variable "Passengers" represents the number of daily passengers on all buses in the city (in thousands). Data were collected from January 1st to December 31st. The intervention was implemented on May 1st (day 121 is the first day of the new schedule). 
+
+ **Variable name**       | **Description    **                                   
+------------------------ | -----------------------------------------------------
+Passengers               |Daily passengers on the buses (in thousands)                      
+
+
+
+You can load the data by adding this chunk to your file: 
+
+```{r,include=FALSE}
+passengers <- 
+c(1328, 1407, 1425, 1252, 1287, 1353, 1301, 1294, 1336, 1371, 
+1408, 1326, 1364, 1295, 1320, 1260, 1347, 1316, 1287, 1292, 1259, 
+1349, 1274, 1365, 1317, 1341, 1316, 1313, 1285, 1369, 1309, 1446, 
+1422, 1397, 1358, 1310, 1294, 1373, 1161, 1320, 1376, 1335, 1382, 
+1455, 1374, 1267, 1318, 1370, 1297, 1391, 1269, 1341, 1238, 1391, 
+1296, 1260, 1330, 1447, 1296, 1389, 1278, 1319, 1333, 1372, 1325, 
+1299, 1299, 1312, 1352, 1355, 1404, 1317, 1330, 1325, 1368, 1311, 
+1310, 1242, 1247, 1366, 1401, 1282, 1298, 1301, 1341, 1353, 1398, 
+1352, 1300, 1442, 1365, 1411, 1360, 1100, 1334, 1336, 1274, 1303, 
+1487, 1341, 1436, 1294, 1390, 1338, 1400, 1325, 1352, 1353, 1288, 
+1304, 1338, 1355, 1212, 1386, 1426, 1380, 1425, 1287, 1337, 1288, 
+1348, 1308, 1402, 1370, 1401, 1363, 1312, 1457, 1367, 1320, 1338, 
+1447, 1371, 1402, 1461, 1382, 1260, 1341, 1309, 1317, 1509, 1403, 
+1324, 1347, 1351, 1307, 1267, 1312, 1472, 1403, 1327, 1501, 1470, 
+1438, 1416, 1369, 1355, 1317, 1448, 1423, 1401, 1356, 1400, 1356, 
+1452, 1435, 1387, 1372, 1390, 1538, 1460, 1474, 1510, 1360, 1424, 
+1275, 1381, 1453, 1430, 1404, 1350, 1375, 1327, 1312, 1464, 1478, 
+1536, 1397, 1229, 1337, 1442, 1316, 1455, 1312, 1505, 1440, 1408, 
+1429, 1280, 1560, 1422, 1363, 1349, 1326, 1400, 1464, 1488, 1352, 
+1485, 1446, 1540, 1435, 1377, 1287, 1480, 1353, 1359, 1493, 1387, 
+1314, 1478, 1306, 1462, 1533, 1261, 1488, 1482, 1461, 1452, 1540, 
+1438, 1423, 1425, 1353, 1489, 1546, 1401, 1459, 1527, 1341, 1516, 
+1406, 1414, 1442, 1272, 1371, 1435, 1446, 1287, 1496, 1442, 1614, 
+1305, 1459, 1342, 1478, 1501, 1357, 1428, 1444, 1431, 1425, 1434, 
+1488, 1508, 1454, 1436, 1485, 1522, 1437, 1396, 1407, 1382, 1444, 
+1494, 1303, 1552, 1282, 1352, 1412, 1378, 1579, 1543, 1425, 1404, 
+1380, 1593, 1555, 1532, 1514, 1485, 1504, 1442, 1401, 1453, 1493, 
+1522, 1417, 1545, 1422, 1540, 1447, 1447, 1575, 1431, 1516, 1542, 
+1519, 1485, 1526, 1400, 1563, 1471, 1517, 1506, 1514, 1444, 1348, 
+1588, 1574, 1275, 1331, 1436, 1475, 1570, 1513, 1469, 1573, 1432, 
+1467, 1513, 1475, 1572, 1430, 1512, 1532, 1487, 1474, 1508, 1410, 
+1455, 1445, 1544, 1500, 1517, 1496, 1606, 1613, 1526, 1487, 1540, 
+1511, 1534, 1620, 1409, 1542, 1517, 1493, 1443, 1463, 1391, 1583, 
+1516, 1700, 1422)
+```
+
+
+
+
+Use a time series model to analyze the impact of the program. 
+
+
+# Lab Questions 
+
+
+## Question 1 
+
+**Q1: Prepare the data for the analysis.** 
+
+* **Q1a:** Create the three variables you will need to run a time series model: Time, TimeSince, and Treatment. Your dataset should look something like this: (5 points for each variable)
+
+ 
+
+```{r, echo=F}
+URL <- "https://raw.githubusercontent.com/DS4PS/pe4ps-textbook/master/labs/DATA/TS_lab.csv"
+dat <- read.csv( URL, stringsAsFactors=F )
+rbind( head(dat), tail(dat)) %>% pander()
+```
+
+
+
+### Create Main Dataset
+
+### **Answer:Q1a:**
+```{r}
+main <-tibble(
+passengers = passengers,
+Time = 1:length(passengers),
+Treatment = ifelse(Time >=  121,1,0),
+TimeSince = c(rep(0,120),rep(1:245))
+)
+
+
+
+```
+
+
+
+** Output from the head and tail end of the data
+
+```{r}
+head(main)%>%
+  pander()
+
+```
+
+```{r}
+tail(main)%>%
+  pander()
+
+```
+
+
+
+* **Q1b:** Provide a table of summary statistics of passenger traffic. (5 points)
+
+###  **Answer:Q1b:**
+
+* Summary Statistics
+```{r}
+
+summary(main)%>%
+  pander()
+```
+
+
+
+
+
+## Question 2 
+
+**Q2: Run the time series model.** 
+
+* Model
+
+```{r}
+set.seed(1234)
+model_one <- lm(passengers ~ .,data=main)
+
+
+
+his<-main%>%
+  ggplot(.,aes(x=model_one$residuals))+
+  geom_histogram(bins = 30,colour = 'steelblue', size = 2)
+
+coef<-coefplot::coefplot(model_one, sort = "magnitude")
+
+grid.arrange(his,coef,ncol = 2)
+
+```
+
+
+* **Q2a:** Run the model and provide a result table in stargazer. (5 points +  5 points)
+
+### **Answer:Q2a**
+
+```{r}
+
+msummary(model_one, stars = c('*' = .1, '**' = .05, '***' = .01),
+         vcov = sandwich::NeweyWest)
+
+```
+
+
+`
+```{r}
+library(forecast)
+
+checkresiduals(model_one)
+
+```
+
+
+We see that our residuals are not distinguishable from "White Noise".
+
+
+* **Q2b:** What does the intercept represent? (5 points)
+
+
+### **Answer:Q2b**
+
+The intercept represents the initial average of the passengers
+
+* **Q2c:** What does the coefficient of Time represent? (5 points)
+
+
+### **Answer:Q2c**
+
+The Coefficient of Time represents the Slope before the Treatment or intervention.
+
+* **Q2d:** Which coefficient represents the immediate effect of the policy? (5 points)
+
+
+### **Answer:Q2d**
+
+The coefficient that represents the immediate effect is the **Treatment** variable
+
+* **Q2e:** Which coefficient represents the sustained effect of the policy? (5 points)
+
+### **Answer:Q2e**
+
+The coefficient **TimeSince** represents the sustained effect of the model
+
+
+
+## Question 3 
+
+**Q3: Now let's look at the results more closely**
+
+#### Plot of The New Schedule
+
+```{r}
+
+plot( main$Time, main$passengers,
+      bty="n", pch=19, col="gray",
+      ylim = c(1100, 1700), xlim=c(0,400),
+      xlab = "Time (days)", 
+      ylab = "Passengers" )
+
+# Line marking the interruption
+abline( v=121, col="firebrick", lty=2 )
+text( x = 150, y = 1700, "Start of New Schedule", col="firebrick", cex=1.3, pos=4 )
+
+# Add the regression line
+ts <- lm(passengers ~ ., data = main )
+lines( main$Time, ts$fitted.values, col="steelblue", lwd=5)
+
+```
+
+
+
+* **Q3a:** Has the new schedule increased or decreased the use of public transportation in the short term? Indicate the magnitude of the effect and whether it is statistically significant. (3 * 3 points)
+
+### **Answer: Q3a**
+
+We see that there is both an immediate and Sustained Effect of the New Schedule
+
+* The Treatment contributes to a gain of ~ 22 Passengers along with the
+sustained effect of an additional gain of .5 Passengers for each day that passes.
+
+* These coefficients are Statistically Significant 
+
+* Standard Errors used are **Newey-West**
+
+* Given the immediate effect and Sustained effect of B2 and B3 From the New Schedule Plot, we can see in the short-term there is a positive gain in Public Transportation. 
+
+* **Q3b:** Has the new schedule increased or decreased the use of public transportation in the long term? Indicate the magnitude of the effect and whether it is statistically significant. (3 * 3 points)
+
+### **Answer: Q3b:** 
+
+As stated above, since we have an immediate effect and sustained positive effect, which are both statistically significant. There is strong evidence to support an increase in public transportation in the long term due to the New Schedule.
+
+However, since this is just to the end of the year. This analysis should be revisited moving forward into the following year.
+
+The reason to revisit this analysis is due to the limitations of ITS.
+
+We may be observing a confounder that have failed to identify, and the ITS may not be the appropriate model to use. Also, riders could possibly return to the normal pre intervention trend (Regression to the mean).
+
+
+* **Q3c:** Provide a brief (1-2 statements) possible explanation for these results. (4 points)
+
+### Brief Summary:
+
+This analysis shows that implementing a new schedule with an increase of buses at peak times  supports a strong increase in riders. This new program shows immediate and sustained support for ridership increases. Therefore, the New Schedule is effective.
+
+
+## Question 4 
+
+**Q4:** An important aspect of a time series model is the counterfactual. 
+
+* **Q4a:** What is the number of passengers 100 days after the intervention? (5 points)
+
+
+```{r}
+p<-100
+t<-121+p
+treat<-1
+
+
+# We create a small dataset with the new values
+data1 <- as.data.frame( cbind( Time = t, Treatment = treat, TimeSince = p )) 
+
+
+y1 <- predict( model_one, data1 ) 
+
+# We plot our initial observations, the column Y in our dataset
+plot( main$passengers,
+      bty="n", pch=19, col="gray",
+      ylim = c(1100, 1700), xlim=c(0,400),
+      xlab = "Time (days)", 
+      ylab = "Passengers" )
+
+
+
+# We add a point showing the level of wellbeing at time = 201)
+points( t, y1, col = "dodgerblue4", 
+        pch = 19, bg = "dodgerblue4", cex = 2 )
+text( t, y1, labels = paste("t = ",t,"y = ", round(y1,2)), pos = 4, cex = 1 )
+
+text( x = 150, y = 1700, "Start of New Schedule", col="firebrick", cex=1.3, pos=4 )
+
+# Line marking the interruption
+abline( v=121, col="red", lty=2 )
+
+```
+
+ **Answer:Q4a:**
+ 
+ There are roughly 1424 Passengers total at 100 days post treatment.
+
+* **Q4b:** What is the counterfactual? Provide both its formula and estimation. (5 + 5 points)
+
+
+
+  **Answer: Q4b:**
+
+$$\begin{equation} 
+\text{Y} = \text{b}_0 + \text{b}_1*221 + \text{b}_2*0 + \text{b}_3*0 + \text{e}
+\end{equation}$$
+
+
+
+
+The counterfactual represents the group that received the treatment if the treatment didn't occur.
+
+Basically, what would our passengers look like absent the new schedule, and increased buses.
+
+
+```{r}
+
+p2<-0
+t2<-121+p2+100
+treat2<-0
+
+
+# We create a small dataset with the new values
+data2 <- as.data.frame( cbind( Time = t2, Treatment = treat2, TimeSince = p2 )) 
+
+
+y2 <- predict( model_one, data2 ) 
+
+# We plot our initial observations, the column Y in our dataset
+plot( main$passengers,
+      bty="n", pch=19, col="gray",
+      ylim = c(1100, 1700), xlim=c(0,400),
+      xlab = "Time (days)", 
+      ylab = "Passengers" )
+
+points( t, y1, col = "dodgerblue4", 
+        pch = 19, bg = "dodgerblue4", cex = 2 )
+
+text( t, y1, labels = paste("t = ",t,"y = ", round(y1,2)), pos = 4, cex = 1 )
+
+points( t2, y2, col = "darkorange2", 
+        pch = 19, bg = "darkorange2", cex = 2 )
+text( t2, y2, labels = paste("t = ",t2,"y = ", round(y2,2)), pos = 4, cex = 1 )
+
+text( x = 150, y = 1700, "Start of New Schedule", col="firebrick", cex=1.3, pos=4 )
+
+# Line marking the interruption
+abline( v=121, col="red", lty=2 )
+
+
+
+```
+
+**Answer:Q4c:**
+
+
+Here we see the counterfactual as roughly 1352 passengers 100 days after the intervention.
+
+
+* **Q4c:** What would the counterfactual be after 150 days? (5 points)
+
+```{r}
+
+p2<-0
+t2<-150+p2+121
+treat2<-0
+
+
+# We create a small dataset with the new values
+data2 <- as.data.frame( cbind( Time = t2, Treatment = treat2, TimeSince = p2 )) 
+
+
+y2 <- predict( model_one, data2 ) 
+
+# We plot our initial observations, the column Y in our dataset
+plot( main$passengers,
+      bty="n", pch=19, col="gray",
+      ylim = c(1100, 1700), xlim=c(0,400),
+      xlab = "Time (days)", 
+      ylab = "Passengers" )
+
+
+points( t2, y2, col = "darkorange2", 
+        pch = 19, bg = "darkorange2", cex = 2 )
+text( t2, y2, labels = paste("t = ",t2,"y = ", round(y2,2)), pos = 4, cex = 1 )
+
+text( x = 150, y = 1700, "Start of New Schedule", col="firebrick", cex=1.3, pos=4 )
+
+# Line marking the interruption
+abline( v=121, col="red", lty=2 )
+
+```
+
+
+Here we see the counterfactual as roughly 1357 passengers 150 days after the intervention.
+
+
+* **Q4d:** Are the two counterfactuals the same? Why? (3 + 5 points)
+
+
+**Answer:Q4d**
+
+The two counterfactuals are the same in that they represent the treated group had the treatment not taken place. This trend will be show below.
+
+```{r}
+
+pred1 <- predict(model_one, main) 
+
+datanew <- as.data.frame(cbind(Time = rep(1 : 365), Treatment = rep(0), TimeSince = rep(0))) 
+
+pred2 <- predict(model_one, datanew) 
+
+plot(main$passengers,
+    col = "darkgray",
+    pch = 16,
+    cex = 2,
+    xlim = c(1, 365), 
+    ylim = c(1050, 1750),
+    xlab = "Time (days)", 
+    ylab = "Passengers")
+
+lines( rep(1:120), pred1[1:120], col="dodgerblue4", lwd = 5 )
+lines( rep(121:365), pred1[121:365], col="dodgerblue4", lwd = 5 )
+lines( rep(120:365), pred2[120:365], col="darkorange2", lwd = 5, lty = 7 ) 
+
+text(0, 45, labels = "Predicted values", pos = 4, cex = 1, col = "dodgerblue3")
+text(300, 105, labels = "Counterfactual", pos = 4, cex = 1, col = "darkorange2")
+
+# Line marking the interruption
+abline( v=121, col="red", lty=2 )
+
+text( x = 150, y = 1700, "Start of New Schedule", col="firebrick", cex=1.3, pos=4 )
+
+
+```
+
+
+
+## Bonus 
+
+**Time series with a control group**
+
+We have learned that there are threats to the validity of time series analysis. In particular, another event might have occurred at the same time of the intervention and caused the immediate and sustained effect that we observe. 
+
+A way to address this issue is to use a control group that is not subject to the intervention. This design makes sure that the effect we observe is the result of the policy intervention. 
+
+The mayor proposes to utilize city B as a control group. City B is a neighbor city with very similar characteristics to city A. Yet city B has not changed its bus schedule in the past year.
+
+* **BQ1** Upload the data TS_Groups_Lab.csv from the class package. Look at the variables that are included and estimate a new time series model which includes the control group. (5 points)
+* **BQ2** Interpret only the new coefficients in the model. Indicate whether they are stastitically significant and what they represent. Can you confirm the results of the previous model? (5 points)
+
+
+```{r}
+URL <- "https://raw.githubusercontent.com/DS4PS/pe4ps-textbook/master/labs/DATA/TS_Groups_lab.csv"
+dat.grouped <- read.csv( URL, stringsAsFactors=F )
+```
+
+
+```{r, echo=F}
+head( dat.grouped ) %>% pander()
+```
+
+
+
+```{r,include=FALSE}
+group <- 
+c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 
+0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L)
+```
+
+
+### Following the ITS Model with a Control Group
+
+
+$$\begin{equation} 
+\text{Y} = \text{b}_0 + \text{b}_1*T + \text{b}_2*D + \text{b}_3*P + \text{b}_4*G + \text{b}_5*G*T + \text{b}_6*G*D + \text{b}_7*G*P
+  \tag{4.1}
+\end{equation}$$
+
+
+
+
+
+```{r}
+library(fable)
+library(feasts)
+library(dynlm)
+
+
+options(scipen = 9999)
+
+model_three<-lm(lag(log(passengers))~Group*Time+Group*Treatment+Group*TimeSince,
+   data = dat.grouped)
+
+out<-newey_west(model_three)
+
+nw<-out[["extra_args"]][["lag"]][["residuals"]]
+
+checkresiduals(nw)
+
+msummary(model_three, stars = c('*' = .1, '**' = .05, '***' = .01),
+         vcov = sandwich::NeweyWest)
+
+```
+
+
+
+```{r}
+
+M <- model.matrix(lm(log(passengers)~Group*Time+Group*Treatment+Group*TimeSince+Time^2+
+                  -X, data = dat.grouped))
+Y <- as.matrix(dat.grouped$passengers)
+
+(fit <- auto.arima(Y,
+  xreg=M))
+
+
+
+```
+
+ARIMA Model didn't add any AR, MA, or difference
+
+
+###**Answer:BQ2** 
+
+G: From th initial model **model_three**  we can see that Group is -.038 percent change from last month and statistically significant. The control group shows a difference of -.038 from the Treatment group. Passengers is lagged and logged to control for autocorrleation. 
+
+Passengers is last month and a percent change. So the control group on the last month is different from the last month Treatment group with statistical significance.
+
+
+G*T: Our coefficient for the interaction of Group and Time is .001 and statistical significance. This represents the slop change difference between the treatment and control group prior to the treatment.
+
+G*Treatment: Our coefficient for the interaction of Group and Treatment is .009 and Not statistical significance. This represents the difference between the Treatment and Control Group associated with the Treatment Intervention.
+
+
+G*P: Our coefficient for the interaction of Group and TimeSince is .001 and statistical significance. This represents the slop change difference between the treatment and control group regarding the sustained effect of the treatment.
+
+
+From the above, our analysis doesn't show an immediate effect given the treatment when adding a control group to the model. However, we do have a positive and significant effect regarding the sustained treatment effects post treatment.
+
+**We can partially confirm the previous results of the initial model.**
+
+```{css, echo=F, eval=F}
+p {
+color: black;
+margin: 0 0 20px 0;
+}
+
+td {
+    padding: 3px 10px 3px 10px;
+}
+
+p.caption {
+    text-align: center;
+    font-style: italic;
+}
+
+table
+{ 
+    margin-left: auto;
+    margin-right: auto;
+    margin-top:80px;
+    margin-bottom:100px;
+}
+
+h1, h2{
+  margin-top:100px;
+  margin-bottom:20px;
+}
+
+H5{
+    text-align: center;
+    color: gray;
+    font-size:0.8em;
+}
+
+img {
+    max-width: 90%;
+    display: block;
+    margin-right: auto;
+    margin-left: auto;
+    margin-top:30px;
+    margin-bottom:20px;
+}
+
+pre {
+  overflow-x: auto;
+}
+
+pre code {
+   display: block; 
+   padding: 0.5em;
+   margin-bottom:20px;
+}
+
+code {
+  font-size: 92%;
+  border: 10px solid #F8F8F8;
+  margin-bottom: 2px;
+}
+
+code[class] {
+  background-color: #F8F8F8;
+}
+
+
+caption {
+  font-style: bold;
+}
+
+```

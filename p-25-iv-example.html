@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>Instrumental Variables Example</title>
+
+<script src="site_libs/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+<link href="site_libs/font-awesome-5.1.0/css/all.css" rel="stylesheet" />
+<link href="site_libs/font-awesome-5.1.0/css/v4-shims.css" rel="stylesheet" />
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+<link rel="stylesheet" href="textbook.css" type="text/css" />
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+<style type="text/css">
+/* padding for bootstrap navbar */
+body {
+  padding-top: 51px;
+  padding-bottom: 40px;
+}
+/* offset scroll position for anchor links (for fixed navbar)  */
+.section h1 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h2 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h3 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h4 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h5 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.section h6 {
+  padding-top: 56px;
+  margin-top: -56px;
+}
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #ffffff;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script>
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark it active
+  menuAnchor.parent().addClass('active');
+
+  // if it's got a parent navbar menu mark it active as well
+  menuAnchor.closest('li.dropdown').addClass('active');
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-inverse  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">PROG EVAL I</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        <li>
+  <a href="https://ds4ps.org/cpp-523-fall-2019/">
+    <span class="fa fa-github fa-2x"></span>
+     
+  </a>
+</li>
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Instrumental Variables Example</h1>
+
+</div>
+
+<div id="TOC">
+<ul>
+<li><a href="#data">Data</a></li>
+<li><a href="#size-of-bias">Size of Bias</a></li>
+<li><a href="#instrumental-variable-model">Instrumental Variable Model</a></li>
+<li><a href="#model-fit">Model Fit</a></li>
+<li><a href="#weak-instruments-problem">Weak Instruments Problem</a></li>
+</ul>
+</div>
+
+<pre class="r"><code>## Load stargazer package for nice tables
+library( stargazer )
+library( dplyr )
+library( pander )</code></pre>
+<p><br>
+<br></p>
+<div id="data" class="section level2">
+<h2>Data</h2>
+<ul>
+<li><strong>X1</strong> is the policy variable</li>
+<li><strong>X2</strong> is a control variable</li>
+<li><strong>X3</strong> is the omitted variable</li>
+<li><strong>Z</strong> is the instrumental variable</li>
+<li><strong>Y</strong> is the outcome</li>
+</ul>
+<pre class="r"><code>URL &lt;- &quot;https://ds4ps.org/cpp-525-spr-2020/lectures/data/iv-reg-example.csv&quot;
+dat &lt;- read.csv( URL, stringsAsFactors=F )</code></pre>
+<p><br>
+<br></p>
+<p><img src="p-25-iv-example_files/figure-html/unnamed-chunk-5-1.png" width="960" /></p>
+<p><br>
+<br></p>
+<p>Does the variable Z meet the criteria as an instrument if X1 is the policy variable and X3 is the omitted variable? How do you know?</p>
+<p>Answer:</p>
+<ul>
+<li>Z is highly correlated with X1</li>
+<li>Z is uncorrelated with X3</li>
+<li>Z is only correlated with Y through X1 (this you argue by theory)</li>
+</ul>
+<p><br>
+<br></p>
+</div>
+<div id="size-of-bias" class="section level1">
+<h1>Size of Bias</h1>
+<p><br>
+<br></p>
+<pre class="r"><code># Full Model - Correct Slopes
+
+full.model &lt;- lm( y ~ x1 + x2 + x3 )
+
+# Naive Model (biased slopes)
+
+naive.model &lt;- lm( y ~ x1 + x2 )
+
+stargazer( full.model, naive.model,
+           column.labels = c(&quot;Full Model&quot;,&quot;Naive Model&quot;),
+           omit.stat = c(&quot;rsq&quot;,&quot;ser&quot;), 
+           type=&quot;html&quot;, digits=2 )</code></pre>
+<table style="text-align:center">
+<tr>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td colspan="2">
+<em>Dependent variable:</em>
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td colspan="2" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td colspan="2">
+y
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+Full Model
+</td>
+<td>
+Naive Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(1)
+</td>
+<td>
+(2)
+</td>
+</tr>
+<tr>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x1
+</td>
+<td>
+-2.00<sup>***</sup>
+</td>
+<td>
+-3.54<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.0001)
+</td>
+<td>
+(0.03)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x2
+</td>
+<td>
+23.00<sup>***</sup>
+</td>
+<td>
+23.17<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.0003)
+</td>
+<td>
+(0.22)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x3
+</td>
+<td>
+14.00<sup>***</sup>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.001)
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Constant
+</td>
+<td>
+-21.05
+</td>
+<td>
+150,496.50<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(19.11)
+</td>
+<td>
+(12,387.91)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Observations
+</td>
+<td>
+1,000
+</td>
+<td>
+1,000
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Adjusted R<sup>2</sup>
+</td>
+<td>
+1.00
+</td>
+<td>
+0.97
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+F Statistic
+</td>
+<td>
+4,978,805,025.00<sup>***</sup> (df = 3; 996)
+</td>
+<td>
+14,977.62<sup>***</sup> (df = 2; 997)
+</td>
+</tr>
+<tr>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+<em>Note:</em>
+</td>
+<td colspan="2" style="text-align:right">
+<sup><em></sup>p&lt;0.1; <sup><strong></sup>p&lt;0.05; <sup></strong></em></sup>p&lt;0.01
+</td>
+</tr>
+</table>
+<p><br>
+<br></p>
+<p>Our estimate of policy impact is very different in our “naive model” versus the full, unbiased model. The omitted variable X3 is causing problems.</p>
+<p><br>
+<br></p>
+</div>
+<div id="instrumental-variable-model" class="section level1">
+<h1>Instrumental Variable Model</h1>
+<p>When we have an instrumental variable, we estimate our policy impact using a “Two-Stage Least Squares” approach. In the first stage, we “clean” our policy variable from the influence of the omitted variable X3. In the second stage, we use the clearn version of X1 (X1-hat) to make a better (less biased) estimate of program impact.</p>
+<pre class="r"><code>first.stage &lt;- lm( x1 ~ z + x2 )
+
+x1_hat &lt;- fitted( first.stage )
+
+second.stage &lt;- lm( y ~ x1_hat + x2 )
+
+
+stargazer( full.model, naive.model, second.stage,
+           column.labels = c(&quot;Full Model&quot;,&quot;Naive Model&quot;,&quot;IV Model&quot;),
+           type=&quot;html&quot;, 
+           omit.stat = c(&quot;rsq&quot;,&quot;ser&quot;), 
+           digits=2 )</code></pre>
+<table style="text-align:center">
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td colspan="3">
+<em>Dependent variable:</em>
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td colspan="3">
+y
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+Full Model
+</td>
+<td>
+Naive Model
+</td>
+<td>
+IV Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(1)
+</td>
+<td>
+(2)
+</td>
+<td>
+(3)
+</td>
+</tr>
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x1
+</td>
+<td>
+-2.00<sup>***</sup>
+</td>
+<td>
+-3.54<sup>***</sup>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.0001)
+</td>
+<td>
+(0.03)
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x1_hat
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+-1.89<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+(0.24)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x2
+</td>
+<td>
+23.00<sup>***</sup>
+</td>
+<td>
+23.17<sup>***</sup>
+</td>
+<td>
+24.31<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.0003)
+</td>
+<td>
+(0.22)
+</td>
+<td>
+(0.91)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x3
+</td>
+<td>
+14.00<sup>***</sup>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.001)
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Constant
+</td>
+<td>
+-21.05
+</td>
+<td>
+150,496.50<sup>***</sup>
+</td>
+<td>
+453,849.70<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(19.11)
+</td>
+<td>
+(12,387.91)
+</td>
+<td>
+(63,763.40)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Observations
+</td>
+<td>
+1,000
+</td>
+<td>
+1,000
+</td>
+<td>
+1,000
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Adjusted R<sup>2</sup>
+</td>
+<td>
+1.00
+</td>
+<td>
+0.97
+</td>
+<td>
+0.47
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+F Statistic
+</td>
+<td>
+4,978,805,025.00<sup>***</sup> (df = 3; 996)
+</td>
+<td>
+14,977.62<sup>***</sup> (df = 2; 997)
+</td>
+<td>
+436.98<sup>***</sup> (df = 2; 997)
+</td>
+</tr>
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+<em>Note:</em>
+</td>
+<td colspan="3" style="text-align:right">
+<sup><em></sup>p&lt;0.1; <sup><strong></sup>p&lt;0.05; <sup></strong></em></sup>p&lt;0.01
+</td>
+</tr>
+</table>
+<p><br>
+<br></p>
+<p>Note that the instrumental variable model has almost completely recovered the true slope.</p>
+<p><br>
+<br></p>
+</div>
+<div id="model-fit" class="section level1">
+<h1>Model Fit</h1>
+<p><br></p>
+<p>We know that omitted variable bias results from the correlation of our policy variable (X1) and the omitted variable (X3).</p>
+<p><br></p>
+<pre class="r"><code>cplot( x1, x3, xlab=&quot;X1&quot;, ylab=&quot;X3&quot; )</code></pre>
+<p><img src="p-25-iv-example_files/figure-html/unnamed-chunk-10-1.png" width="960" /></p>
+<p><br></p>
+<p>We can use the instrumental variable to partition the variance of X1 into a component that is highly correlated with X3 (the residual), and a component that is uncorrelated with X3 (X1-hat). If we want to be free of omitted variable bias caused by X3 we can use the uncorrelated component of X1 only (X1-hat).</p>
+<p><br></p>
+<pre class="r"><code>first.stage &lt;- lm( x1 ~ z + x2 )
+
+x1_hat &lt;- fitted( first.stage )
+e_x1 &lt;- residuals( first.stage )
+
+
+par( mfrow=c(1,2) )
+
+cplot( e_x1, x3, xlab=&quot;X1 Residual&quot;, ylab=&quot;X3&quot; )
+cplot( x1_hat, x3, xlab=&quot;X1-Hat&quot;, ylab=&quot;X3&quot; )</code></pre>
+<p><img src="p-25-iv-example_files/figure-html/unnamed-chunk-11-1.png" width="960" /></p>
+<p><br></p>
+<p>One interesting thing about the instrumental variable model is that X1 will be more correlated with Y than X1-hat, but X1-hat does a better job of recovering the true slope B1 from the full model.</p>
+<p><br></p>
+<pre class="r"><code>par( mfrow=c(1,2) )
+
+cplot( x1, y, xlab=&quot;X1&quot;, ylab=&quot;Y&quot; )
+cplot( x1_hat, y, xlab=&quot;X1-Hat&quot;, ylab=&quot;Y&quot; )</code></pre>
+<p><img src="p-25-iv-example_files/figure-html/unnamed-chunk-12-1.png" width="960" /></p>
+<p><br>
+<br></p>
+<table style="text-align:center">
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td colspan="3">
+<em>Dependent variable:</em>
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td colspan="3">
+y
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+Full Model
+</td>
+<td>
+Naive Model
+</td>
+<td>
+IV Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(1)
+</td>
+<td>
+(2)
+</td>
+<td>
+(3)
+</td>
+</tr>
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x1
+</td>
+<td>
+-2.00<sup>***</sup>
+</td>
+<td>
+-3.54<sup>***</sup>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.0001)
+</td>
+<td>
+(0.03)
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x1_hat
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+-1.89<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+(0.24)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x2
+</td>
+<td>
+23.00<sup>***</sup>
+</td>
+<td>
+23.17<sup>***</sup>
+</td>
+<td>
+24.31<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.0003)
+</td>
+<td>
+(0.22)
+</td>
+<td>
+(0.91)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x3
+</td>
+<td>
+14.00<sup>***</sup>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.001)
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Constant
+</td>
+<td>
+-21.05
+</td>
+<td>
+150,496.50<sup>***</sup>
+</td>
+<td>
+453,849.70<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(19.11)
+</td>
+<td>
+(12,387.91)
+</td>
+<td>
+(63,763.40)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Observations
+</td>
+<td>
+1,000
+</td>
+<td>
+1,000
+</td>
+<td>
+1,000
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Adjusted R<sup>2</sup>
+</td>
+<td>
+1.00
+</td>
+<td>
+0.97
+</td>
+<td>
+0.47
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+F Statistic
+</td>
+<td>
+4,978,805,025.00<sup>***</sup> (df = 3; 996)
+</td>
+<td>
+14,977.62<sup>***</sup> (df = 2; 997)
+</td>
+<td>
+436.98<sup>***</sup> (df = 2; 997)
+</td>
+</tr>
+<tr>
+<td colspan="4" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+<em>Note:</em>
+</td>
+<td colspan="3" style="text-align:right">
+<sup><em></sup>p&lt;0.1; <sup><strong></sup>p&lt;0.05; <sup></strong></em></sup>p&lt;0.01
+</td>
+</tr>
+</table>
+<p><br>
+<br></p>
+<p>The effectiveness of the instrument is largely determined by the strength of the correlation between the instrumental variable Z and the policy variable X1, as well as the total correlation of the instrumental variable with Y.</p>
+<p><br>
+<br></p>
+<pre class="r"><code>par( mfrow=c(1,2) )
+
+cplot( z, x1, xlab=&quot;Z&quot;, ylab=&quot;X1&quot; )
+cplot( z, y, xlab=&quot;Z&quot;, ylab=&quot;Y&quot; )</code></pre>
+<p><img src="p-25-iv-example_files/figure-html/unnamed-chunk-14-1.png" width="960" /></p>
+<p><br>
+<br></p>
+</div>
+<div id="weak-instruments-problem" class="section level1">
+<h1>Weak Instruments Problem</h1>
+<pre class="r"><code>first.stage &lt;- lm( x1 ~ z + x2 )
+
+stargazer( first.stage,
+           column.labels = c(&quot;First Stage&quot;),
+           type=&quot;html&quot;, 
+           omit.stat = c(&quot;rsq&quot;,&quot;ser&quot;), 
+           digits=2 )</code></pre>
+<table style="text-align:center">
+<tr>
+<td colspan="2" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+<em>Dependent variable:</em>
+</td>
+</tr>
+<tr>
+<td>
+</td>
+<td colspan="1" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+x1
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+First Stage
+</td>
+</tr>
+<tr>
+<td colspan="2" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+z
+</td>
+<td>
+1.90<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.11)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+x2
+</td>
+<td>
+-0.62<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(0.22)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Constant
+</td>
+<td>
+-215,379.30<sup>***</sup>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(11,646.16)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td colspan="2" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Observations
+</td>
+<td>
+1,000
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Adjusted R<sup>2</sup>
+</td>
+<td>
+0.22
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+F Statistic
+</td>
+<td>
+143.55<sup>***</sup> (df = 2; 997)
+</td>
+</tr>
+<tr>
+<td colspan="2" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+<em>Note:</em>
+</td>
+<td style="text-align:right">
+<sup><em></sup>p&lt;0.1; <sup><strong></sup>p&lt;0.05; <sup></strong></em></sup>p&lt;0.01
+</td>
+</tr>
+</table>
+<p><br>
+<br></p>
+<p>The rule of thumb is that the first stage should have an F Statistic of at least 10 in the first stage model to avoid the weak instrument problem.</p>
+</div>
+
+<div class="footer">
+<div class="row"  align="center">
+
+  Designed by <a href=http://ds4ps.github.io target="_blank">DS4PS</a><br>
+  Powered by <a href=http://jekyllrb.com target="_blank">Jekyll</a>
+
+</div>
+</div>
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

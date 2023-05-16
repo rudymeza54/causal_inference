@@ -9,8 +9,7 @@ output:
     toc: yes
     toc_float: no
     css: 'css/lab-instructions.css'
-    includes:
-      after_body: 'footer.html'
+
       
 ---
 

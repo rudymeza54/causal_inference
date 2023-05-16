@@ -3,16 +3,17 @@ Name: 'Rudy Meza'
 title: "Interrupted Time Series LAB"
 output:
   html_document:
+  github_document:
     theme: readable
     df_print: paged
     highlight: tango
     toc: yes
     toc_float: no
     css: 'css/lab-instructions.css'
-    includes:
-      after_body: 'footer.html'
+    
       
 ---
+
 
 
 ```{r setup, include=FALSE}

@@ -5,7 +5,7 @@
 
 ## ASU Program Evalutaion
 
-[Foundations of Program Evaluation 3:Advanced Regression
+[Foundations of Program Evaluation 3: Advanced Regression
 Tools](https://asuonline.asu.edu/online-degree-programs/graduate/program-evaluation-and-data-analytics-ms/)
 
 This course builds on previous program evaluation courses through

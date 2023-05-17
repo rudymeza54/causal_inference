@@ -1,1 +1,16 @@
-# causal_inference
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+# Causal Inference
+
+## ASU Program Evalutaion
+
+[Foundations of Program Evaluation 3:Advanced Regression
+Tools](https://asuonline.asu.edu/online-degree-programs/graduate/program-evaluation-and-data-analytics-ms/)
+
+This course builds on previous program evaluation courses through
+translating each specific form of the counterfactual — pre-post with
+comparisons, reflexive design and the post-test only design — into
+specific regression models that leverage each counterfactual. You will
+learn how to estimate several common regression models that leverage
+unique data and counterfactual specifications.

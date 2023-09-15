@@ -2,14 +2,8 @@
 Name: 'Rudy Meza'
 title: "Difference in Difference Lab"
 output:
-  html_document:
   github_document:
-    theme: readable
-    df_print: paged
-    highlight: tango
-    toc: yes
-    toc_float: no
-    css: 'css/lab-instructions.css'
+    toc: TRUE
 
 ---
 

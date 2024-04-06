@@ -1,0 +1,923 @@
+---
+title: "Causal Inference Methods"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    source: embed
+runtime: shiny
+---
+
+
+
+
+
+```{r,warning=FALSE,message=FALSE}
+
+library(tidyverse)
+library(plm)
+library(DT)
+library(stargazer)
+library(shiny)
+library(RCurl)
+library(plotly)
+library(broom)
+library(shiny)
+library(flexdashboard)
+library(MatchIt)
+library(shinyWidgets)
+library(halfmoon)
+library(sandwich)
+library(fixest)
+library(tidysynth)
+
+
+
+# FIXED-EFFECTS: TAB 1  
+  
+# DATA PROCESSING AND READING FOR CAUSAL INFERENCE METHODS
+
+rm(list = ls())
+## FIXED-EFFECTS
+
+data(Crime)
+df<- Crime 
+
+dataCrime<-filter(df,county %in% c(1,3,7,23))
+
+
+
+dataCrime_within<-dataCrime %>%
+  group_by(county) %>%
+  mutate(crime_within = crmrte - mean(crmrte),
+         prbarr_within = prbarr - mean(prbarr))
+
+
+### LM MODEL WITH POOLED VS FIXED-EFFECTS
+
+
+pooled<-tidy(feols(crmrte ~ prbarr, dataCrime))
+fe<-tidy(feols(crmrte ~ prbarr | county, data = dataCrime ))
+
+
+
+# MATCHING: TAB 2
+
+
+# DATA PROCESSING
+
+
+url<-"https://github.com/rudymeza54/causal_inference/blob/main/mosquito_nets.RDS?raw=true"
+
+
+malaria_df <- readRDS(gzcon(url(url)))
+
+
+malaria_df$net<-as.factor(malaria_df$net)
+
+
+
+# MATCHIT DATA PROCESSING
+
+
+
+m1 = matchit(net ~ income + temperature + health,
+             method = "nearest", distance = "mahalanobis",
+             replace = FALSE,data = malaria_df)
+
+m1data = match.data(m1)
+
+
+# REGRESSION MODELS
+
+naive<-tidy(lm(malaria_risk ~ net,malaria_df)) 
+matchit<-tidy(lm(malaria_risk ~ net,m1data))
+
+# IPW MODELING WITH ROBUST STANDARD ERRORS
+
+model_logit <- glm(net ~ income + temperature + health,
+                   data = malaria_df,
+                   family = binomial(link = "logit"))
+
+net_probabilities <- augment_columns(model_logit,
+                                     malaria_df,
+                                     type.predict = "response") |>
+  # The predictions are in a column named ".fitted", so we rename it here
+  rename(propensity = .fitted)
+
+
+net_ipw <- net_probabilities |>
+  mutate(ipw = (net_num / propensity) + ((1 - net_num) / (1 - propensity)))
+
+
+
+model_ipw <- lm(malaria_risk ~ net,
+                data = net_ipw,
+                weights = ipw)
+
+robust_var <- sandwich(model_ipw)[2, 2]
+point_est <- coef(model_ipw)[2]
+lb <- point_est - 1.96 * sqrt(robust_var)
+ub <- point_est + 1.96 * sqrt(robust_var)
+
+main_output <-tibble(
+        net = point_est,
+        lower = lb,
+        upper = ub,
+        significant = ifelse((lb >0 & ub> 0) | (lb < 0 & ub < 0),"Significant","Not Significant")
+      )
+# SYNTHETIC CONTROL: SMOKING DATASET AND IPW WITH DIFF-IN-DIFF: TAB 3
+
+pre<-smoking %>%
+  filter(
+         year <1988)%>%
+  mutate(group = ifelse(state =="California",1,0))
+
+post<-smoking %>%
+  filter(
+         year >= 1988)%>%
+  mutate(group = ifelse(state =="California",1,0),
+         ipw = 1)
+
+
+
+model_logit_smoking <- glm(group ~ retprice + beer + age15to24,
+                   data = pre,
+                   family = binomial(link = "logit"))
+
+smoking_probabilities <- augment_columns(model_logit_smoking,
+                                     pre,
+                                     type.predict = "response") |>
+  # The predictions are in a column named ".fitted", so we rename it here
+  rename(propensity = .fitted)
+
+
+smoking_ipw <- smoking_probabilities |>
+  mutate(ipw = (group / propensity) + ((1 - group) / (1 - propensity)))%>%
+  select(-c(".se.fit",".resid",".hat",".sigma",".cooksd",".std.resid"))
+
+
+
+
+main<-smoking_ipw %>%
+  bind_rows(post)%>%
+  mutate(treated = state=="California",
+           post = year > 1988)
+
+
+ x_cig<- lm(cigsale ~ treated*post, main,weights = ipw)
+      
+      robust_var <- sandwich(x_cig)[4,4]
+      point_est <- coef(x_cig)[4]
+      lb <- point_est - 1.96 * sqrt(robust_var)
+      ub <- point_est + 1.96 * sqrt(robust_var)
+      
+
+      
+model_output_cig <-tibble(
+        var = "California",
+        ate = point_est,
+        lower = lb,
+        upper = ub,
+        significant = ifelse((lb >0 & ub> 0) | (lb < 0 & ub < 0) 
+                             ,"Significant","Not Significant"))
+
+
+# PLOTS FOR DIFF-IN-DIFF
+
+
+
+plot1<-smoking_ipw %>%
+  group_by(year,group)%>%
+  summarize(cigs = sum(cigsale*ipw)/sum(ipw))
+
+plot2<-post %>%
+  group_by(year,group)%>%
+  summarize(cigs = sum(cigsale*ipw)/sum(ipw))
+
+
+main_plot<-bind_rows(plot1,plot2)
+
+
+
+
+
+```
+
+
+
+
+
+
+<b>Fixed-Effects</b> {data-orientation=rows}
+=====================================  
+
+
+Sidebar {.sidebar}
+-------------------------------------
+
+```{r}
+
+radioButtons("fe",label = "Select Pooled or Fixed-Effects:",
+choices = c("Pooled Model","Fixed-Effects Model"),selected = "Pooled Model")
+
+
+
+
+
+```
+
+
+
+<h3 class="header">Pooled Model vs Fixed-Effects Model</h3>
+
+<br>
+
+<p1 class="p1">
+Looking at Crime Rate ~ Probability of Arrest
+
+Pooling Bias-The naive model groups together different counties
+
+We want to compare the county to itself (Within)
+</p1>
+
+
+
+
+
+
+Column {data-width=650} 
+-------------------------------------
+
+### <b>Crime Rate and Probability of Arrest</b>
+
+```{r}
+
+
+renderPlotly({
+  if(input$fe=="Pooled Model"){
+    
+  ggplot(dataCrime) +
+  aes(x = prbarr, y = crmrte, colour = county) +
+  geom_jitter(size = 2.4) +
+  scale_color_viridis_c(option = "cividis", direction = 1) +
+  theme_minimal()+
+  geom_smooth(method = lm, formula = y ~ x)->p
+    
+  }
+  else if(input$fe=="Fixed-Effects Model"){
+    
+  ggplot(dataCrime_within) +
+  aes(x = prbarr_within, y = crime_within, colour = county) +
+  geom_jitter(size = 2.4) +
+  scale_color_viridis_c(option = "cividis", direction = 1) +
+  theme_minimal()+
+  geom_smooth(method = lm, formula = y ~ x)->p
+    
+  }
+  ggplotly(p)
+})
+
+
+
+```
+
+
+
+
+
+
+
+Row {data-width=650} 
+-------------------------------------
+
+### <b>Model Output</b>
+
+```{r}
+
+renderDT({
+  if(input$fe=="Pooled Model"){
+    
+    pooled
+  }
+  else if(input$fe=="Fixed-Effects Model"){
+    
+    fe
+  }
+  
+})
+
+
+
+```
+
+
+
+
+<b>IPW (Matching)</b> {data-orientation=rows}
+===================================== 
+
+
+
+
+
+Sidebar {.sidebar}
+-------------------------------------
+
+```{r}
+
+radioButtons("ipw",label = "Select Model:",
+            choices = c("Naive Model","MatchIT","IPW Model"),selected = "Naive Model")
+
+
+materialSwitch(inputId = "id", label = "Table switch", status = "primary")
+
+
+
+
+```
+
+
+<h3 class="header">Naive, MatchIt and IPW Matching</h3>
+
+<p1 class="p1">
+This is a simulated dataset. 
+
+The ATE is <b>-10</b>
+
+Naive Model: Malaria Risk ~ netTRUE
+
+MatchIT: Malaria Risk ~ netTRUE<br>
+
+nearest neighbor matching based on variables temperature, health, and income
+
+IPW Matching: Malaria Risk ~ netTRUE<br>
+
+Inverse Probability Weight matching based off variables temperature, health, and income.
+
+Assumptions: Conditional Independence Assumption ~ we've closed all backdoors with our covariates.
+</p1>
+
+Column
+-------------------------------------
+
+### <b>Model</b>
+
+```{r}
+
+renderValueBox({
+  
+  if(input$ipw=="Naive Model"){
+    valueBox(naive$term[2])->t
+  } else if(input$ipw=="MatchIT"){
+    valueBox(matchit$term[2])->t
+  
+  } else if(input$ipw=="IPW Model"){
+    valueBox("netTRUE")->t
+  
+}
+  
+  
+  t
+  
+})
+
+
+
+
+```
+
+
+
+### <b>Average Treatment Effect (ATE)</b>
+
+```{r}
+
+
+renderValueBox({
+  
+  if(input$ipw=="Naive Model"){
+    valueBox(round(naive$estimate[2],2))->x
+  } else if(input$ipw=="MatchIT"){
+    valueBox(round(matchit$estimate[2],2))->x
+  
+  }else if(input$ipw=="IPW Model"){
+    valueBox(round(main_output$net,2))->x
+  
+}
+  x
+})
+
+```
+
+
+
+
+### <b>P-Value</b>
+
+```{r}
+
+renderValueBox({
+  
+  if(input$ipw=="Naive Model"){
+  
+  final<-naive %>%
+    mutate(
+      p.value = ifelse(p.value < .05,"significant",
+                       "not significant")
+    )
+  
+  valueBox(final$p.value[2])->y
+  
+  } else if(input$ipw=="MatchIT"){
+    
+    
+    final<-matchit %>%
+    mutate(
+      p.value = ifelse(p.value < .05,"significant",
+                       "not significant")
+    )
+    
+    valueBox(final$p.value[2])->y
+    
+    
+  } else if(input$ipw=="IPW Model"){
+    
+    valueBox(main_output$significant)->y
+  }
+
+  y
+  
+})
+
+
+```
+
+
+Row {data-width=650} 
+-------------------------------------
+
+
+### <b>Malaria Risk</b>
+
+```{r}
+
+uiOutput("dynamic")
+
+output$dynamic <- renderUI({ 
+  if(input$ipw=="Naive Model"){
+    
+    if (input$id == "FALSE") plotlyOutput("plot")
+    
+    else if (input$id == "TRUE") dataTableOutput("table")
+  }
+  else if(input$ipw=="MatchIT"){
+    
+    if (input$id == "FALSE") plotlyOutput("plot")
+    
+    else if (input$id == "TRUE") dataTableOutput("table")
+  }
+  else if (input$ipw=="IPW Model"){
+    
+    if (input$id == "FALSE") plotlyOutput("plot")
+    
+    else if (input$id == "TRUE") dataTableOutput("table")
+  }
+})
+
+output$plot <- renderPlotly({
+  
+  if(input$ipw=="Naive Model"){
+  ggplot(malaria_df) +
+    aes(x = malaria_risk, fill = net) +
+    geom_histogram(bins = 30L) +
+    scale_fill_manual(
+      values = c(`FALSE` = "#00204D",
+      `TRUE` = "#46ADFF")
+    ) +
+    theme_minimal() ->p
+    
+  } else if(input$ipw=="MatchIT"){
+    
+    ggplot(m1data) +
+    aes(x = malaria_risk, fill = net) +
+    geom_histogram(bins = 30L) +
+    scale_fill_manual(
+      values = c(`FALSE` = "#00204D",
+      `TRUE` = "#46ADFF")
+    ) +
+    theme_minimal() ->p
+    
+  } else if(input$ipw == "IPW Model"){
+    ggplot(net_ipw, aes(propensity)) +
+      geom_mirror_histogram(
+        aes(group = net),
+        bins = 50
+      ) +
+      geom_mirror_histogram(
+        aes(fill = net, weight = ipw),
+        bins = 50,
+        alpha = .5
+      ) +
+      scale_y_continuous(labels = abs) +
+      labs(x = "propensity score") +
+    scale_fill_manual(
+      values = c(`FALSE` = "#00204D",
+      `TRUE` = "#46ADFF")
+    ) +
+    theme_minimal() ->p
+  }
+    
+    ggplotly(p)
+  
+})
+
+output$table <- renderDT({ 
+  
+  if(input$ipw=="Naive Model"){
+    options(scipen = 99999)
+    subset<-malaria_df %>%
+      select(net_num,income,temperature,health)
+  
+  
+    output<-tibble()
+
+    cols<-names(subset[2:4])
+    
+    for(i in  cols){
+    
+      x<-t.test(subset[[i]][subset$net_num==1],
+            subset[[i]][subset$net_num==0])
+      
+      y<-tidy(x)
+      
+      z<-tibble(var = i)
+      
+      t<-cbind(z,y)
+      
+      output<-bind_rows(output,t)
+    
+    }
+  }    
+  
+  
+  if(input$ipw=="MatchIT"){
+    options(scipen = 99999)
+    subset<-m1data %>%
+      select(net_num,income,temperature,health)
+  
+  
+    output<-tibble()
+
+    cols<-names(subset[2:4])
+    
+    for(i in  cols){
+    
+      x<-t.test(subset[[i]][subset$net_num==1],
+            subset[[i]][subset$net_num==0], paired = T)
+      
+      y<-tidy(x)
+      
+      z<-tibble(var = i)
+      
+      t<-cbind(z,y)
+      
+      output<-bind_rows(output,t)
+    
+    }
+  }
+  if(input$ipw =="IPW Model"){
+    
+    options(scipen = 99999)
+    subset<-net_ipw %>%
+      select(net_num,income,temperature,health, ipw)
+    
+    output<-tibble()
+  
+    for(i in names(subset[,2:4])){
+      x<- lm(get(i) ~ net_num, subset,weights = ipw)
+      
+      robust_var <- sandwich(x)[2, 2]
+      point_est <- coef(x)[2]
+      lb <- point_est - 1.96 * sqrt(robust_var)
+      ub <- point_est + 1.96 * sqrt(robust_var)
+      model_output <-tibble(
+        var = i,
+        net = round(point_est,4),
+        lower = lb,
+        upper = ub,
+        "significance at 5% Level" = ifelse((lb >0 & ub> 0) | (lb < 0 & ub < 0) 
+                             ,"Significant","Not Significant")
+      )
+      
+      output<-bind_rows(output,model_output)
+}
+  }
+  
+  
+  
+  
+  
+  
+      output
+  
+  })
+
+
+
+
+```
+
+
+
+<b>Difference-in-Difference</b> {data-orientation=rows}
+===================================== 
+
+
+
+Sidebar {.sidebar}
+-------------------------------------
+
+```{r}
+
+
+
+
+radioButtons("id2",label = "Select Plot/Table",
+choices = c("Differences","Counterfactual","Data Table"),selected = "Differences")
+
+materialSwitch(inputId = "id3", label = "Show Matched Variables", status = "primary")
+
+
+```
+
+
+
+
+<h3 class="header">Difference-in-Difference with IPW Matching</h3>
+
+<br>
+
+<p1 class= "p1">Smoking: Dataset on the implementation of Proposition 99 in California in 1988. Data contains information on California and 38 other (control/donor)</p1>
+
+
+<p2 class= "p2">Proposition 99 increased the cigarette taxes by 0.25$. Also, around this time were anti-smoking campaigns and education on the health risks of smoking.
+
+Counterfactual: <em>what it would have occurred to Y, had the policy intervention not happened?</em></p1>
+
+
+
+
+Row  {data-height=600}
+-------------------------------------
+
+### <b>Counterfactual</b>
+
+```{r}
+
+uiOutput("dynamic2")
+
+output$dynamic2 <- renderUI({ 
+  if (input$id2 =="Data Table") dataTableOutput("table1")
+  else if (input$id2 =="Differences") plotOutput("plot1")
+  else if (input$id2 =="Counterfactual") plotOutput("plot2")
+})
+
+output$table1 <- renderDT({ 
+  
+  main
+  
+})
+
+
+output$plot1 <- renderPlot({ 
+  
+  par(omi = c(1, 1, 0, 1)) 
+  par(mai = c(.5,1,.5,1))
+   
+  plot.new()
+  min_year<-min(main_plot$year)
+  max_year<-max(main_plot$year)
+  
+  min_cig<-round(min(main_plot$cigs))
+  max_cig<-round(max(main_plot$cigs))
+  
+  plot.window(xlim = c(min_year,max_year), 
+              ylim = c(min_cig,max_cig)) 
+  
+  
+  index <- which(main$year >= min_year & main$year <= max_year)
+  
+  main<-main[index,]
+  
+  cigs<-main$cigsale
+  year<-main$year
+  
+  control_year<-main_plot$year[main_plot$group==0]
+  
+  control_cigs<-main_plot$cigs[main_plot$group==0]
+  
+  
+  
+  treatment_year<-main_plot$year[main_plot$group==1]
+  
+  treatment_cigs<-main_plot$cigs[main_plot$group==1]
+  
+  points(x = year, 
+         y = cigs,
+         col = "#dddddd",              # Color
+         pch = 16,                    # Shape
+         cex = 0.75)  
+  
+  
+  
+  axis(side = 1,                      # Add x-axis
+       lwd = 2,                       # Line width
+       hadj = -0.1,                   # Horizontal label position
+       padj = -1,                     # Vertical label position
+       at = seq(from = min_year,
+                to = max_year,
+                by = 1))
+  
+  axis( side = 1, at=c(1987, 1994), 
+        padj = 5,
+        labels=c("Pre-intervention",
+        "Post-intervention" ) )
+  
+  
+  axis(side = 4,                      # Add y-axis
+       lwd = 0,                       # Remove axis line
+       las = 1,                       # Rotate labels
+       col.axis = "black",           # Adjust label colors
+       at = seq(from = min_cig,             # Specify axis values
+                to = max_cig, 
+                by = 5), 
+       font.axis = 2)  # Set labels to bold
+  
+  
+  
+  lines(control_year, control_cigs, col = "#00204D", pch = 20, cex = 1, type = "o", lwd = 2)
+  lines(treatment_year,treatment_cigs, col = "firebrick", pch = 20, cex = 1, type = "o", lwd = 2)
+  abline(v=1988, col = "black",pch = 20, cex = 1, lwd = 2)
+  segments( x0=1984, y0=95, x1=1985, y1=95, col="#00204D", lwd = 3 )
+  points( x=c(1984,1985), y=c(95,95), col="#00204D", pch=20, cex=1.8 )
+  text(x = 1986, y = 96, labels = substitute(paste(bold('Control'))), cex = 1.5)
+  segments( x0=1984, y0=90, x1=1985, y1=90, col="firebrick", lwd = 3)
+  points( x=c(1984,1985), y=c(90,90), col="firebrick", pch=20, cex=1.8 )
+  text(x = 1986, y = 90, labels = substitute(paste(bold('Treatment'))), cex = 1.5)
+  
+  
+})
+
+
+output$plot2<-renderPlot({
+  
+  
+  b0<-coef(x_cig)[1]
+  b1<-coef(x_cig)[2]
+  b2<-coef(x_cig)[3]
+  b3<-coef(x_cig)[4]
+  
+  
+  T1 <- round(b0+b1)
+  T2 <- round(b0+b1+b2+b3)
+  CF <- round(b0+b1+b2)
+  C1 <- round(b0)
+  C2 <- round(b0+b2)
+  
+  palette( c( adjustcolor( "#00204D", alpha.f=1), adjustcolor( "firebrick", alpha.f=1)  ) )
+  
+  plot( c(0,1,0,1), c(T1,T2,C1,C2), bty="n",
+        xlim=c(-1,2), ylim=c(0,135),
+        col=c("#00204D","#00204D","firebrick","firebrick"), pch=19, cex=6, 
+        xaxt="n", yaxt="n",
+        xlab="", ylab="" 
+        #main = bquote("Diff-in-Diff" ~ beta[3]), cex.main = 2,
+        )
+  
+  segments( x0=0.08, x1=0.902, y0=C1, y1=C2, col="gray", lwd=2 )
+  segments( x0=0.08, x1=0.902, y0=T1, y1=T2, col="gray", lwd=2 )
+  
+  text( c(0,1,0,1), c(T1,T2,C1,C2), c(T1,T2,C1,C2), cex=1.5, col="white" )
+  
+  axis( side=1, at=c(0,1), 
+        labels=c("Pre-intervention",
+        "Post-intervention" ) )
+  
+  text( 1.1, T2+9, "Treatment Group", col="#00204D", pos=4, cex=1 )
+  text( 1.1, C2+9, "Comparison Group", col="firebrick", pos=4, cex=1 )
+  
+  text( -0.1, T1, expression(paste(beta[0] + beta[1])), col="#00204D", pos=2, cex = 2 )
+  text( 1.1, T2, expression(paste(beta[0] + beta[1] + beta[2] + beta[3])), col="#00204D", pos=4, cex=2 )
+  text( -0.1, C1, expression(paste(beta[0])), col="firebrick", pos=2, cex = 2 )
+  text( 1.1, C2, expression(paste(beta[0] + beta[2])), col="firebrick", pos=4, cex=2 )
+
+  
+  cf.col <- "darkgreen"
+  
+  points( 1, CF, cex=6, col=cf.col )
+  segments( x0=0.1, x1=0.9, y0=T1+1, y1=CF-1, col=cf.col, lwd=1, lty=2 )
+  text( 1, CF, CF, col=cf.col, cex=1.5 )
+  text( 1.1, CF+9, "Counterfactual", col=cf.col, pos=4, cex=1 )
+  text( 1.1, CF, expression(paste(beta[0] + beta[1] + beta[2])), col=cf.col, pos=4, cex=2 )
+  
+})
+
+
+```
+
+
+
+
+Row  {data-height=400}
+-------------------------------------
+
+
+### <b>Model</b>
+
+```{r}
+
+renderDT({
+  
+  if (input$id3 ==FALSE){
+    
+    model_output_cig->p
+    
+  }
+  if(input$id3 ==TRUE){
+    output_two<-tibble()
+  
+    for(i in names(smoking_ipw[,5:7])){
+      x<- lm(get(i) ~ group, smoking_ipw,weights = ipw)
+      
+      robust_var <- sandwich(x)[2, 2]
+      point_est <- coef(x)[2]
+      lb <- point_est - 1.96 * sqrt(robust_var)
+      ub <- point_est + 1.96 * sqrt(robust_var)
+      model_output2 <-tibble(
+        var = i,
+        estimate = point_est,
+        lower = lb,
+        upper = ub,
+        significant = ifelse((lb >0 & ub> 0) | (lb < 0 & ub < 0) 
+                             ,"Significant","Not Significant"))
+      
+      output_two<-bind_rows(output_two,model_output2)->p
+      
+      
+    }
+  }
+  
+  p
+  
+})
+
+
+
+
+
+
+```
+
+
+
+
+```{css,echo = FALSE}
+
+.header{
+  text-align:center;
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.p1{
+  text-align: left;
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.p2{
+  text-align: left;
+  color: #ffffff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.section.sidebar {
+    top: 51px;
+    background-color: #00204D;
+    color:#ffffff;
+}
+
+
+.chart-title {
+    border-bottom: 1px solid #dfdfdf;
+    font-size: 14px;
+    font-weight: 300;
+    padding: 7px 10px 4px;
+    color: white;
+    font-family: inherit;
+    background-color: #00204D;
+}
+
+```
+

@@ -2,6 +2,7 @@
 Name: 'Rudy Meza'
 title: "Instrumental Variables Lab"
 output:
+  github_document:
   html_document:
     theme: readable
     df_print: paged

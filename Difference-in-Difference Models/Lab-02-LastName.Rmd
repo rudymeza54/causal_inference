@@ -2,8 +2,8 @@
 Name: 'Rudy Meza'
 title: "Difference in Difference Lab"
 output:
+  github_document:
   html_document:
-    github_document:
     theme: readable
     df_print: paged
     highlight: tango

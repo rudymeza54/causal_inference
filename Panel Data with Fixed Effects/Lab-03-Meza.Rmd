@@ -1,6 +1,7 @@
 ---
 title: "Fixed Effects Model LAB"
 output:
+  github_document:
   html_document:
     theme: readable
     df_print: paged
@@ -8,8 +9,7 @@ output:
     toc: yes
     toc_float: no
     css: 'css/lab-instructions.css'
-    includes:
-      after_body: 'footer.html'
+
 --- 
 
 ```{r setup, include=FALSE}

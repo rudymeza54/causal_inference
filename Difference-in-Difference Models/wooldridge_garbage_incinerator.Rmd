@@ -1,0 +1,532 @@
+---
+title: "Difference-in-Difference"
+author: "Rudy Meza"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: readable
+    df_print: paged
+    highlight: tango
+    toc: yes
+    toc_float: no
+---
+
+
+<br>
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set( fig.height = 8, fig.width = 8,echo=T, message=F, warning=F, image.width=10)
+```
+
+
+This analysis comes from the "Introductory Econometrics: A Modern
+Approach, 7e'' by Jeffrey M. Wooldridge" book. I'll be looking at the Difference-in-Difference estimator along with applying a variable selection model.
+
+<br>
+
+Description:
+Wooldridge Source: K.A. Kiel and K.T. McClain (1995), “House Prices During Siting Decision
+Stages: The Case of an Incinerator from Rumor Through Operation,” Journal of Environmental
+Economics and Management 28, 241-255. Professor McClain kindly provided the data, of which I
+used only a subset. Data loads lazily.
+
+
+
+## Setup
+```{r include=FALSE}
+
+library(wooldridge)
+library(tsibble)
+library(tidyverse)
+library(glue)
+library(lmtest)
+library(sandwich)
+library(modelsummary)
+library(ggridges)
+library(scales)
+library(hrbrthemes)
+library(viridis)
+
+```
+
+
+
+## The Policy Problem
+
+> **RESEARCH QUESTION: Does a new garbage incinerator have an affect on home value ?** 
+
+The construction of a garbage incinerator started in 1981, but it was not until 1985 that it became operational. There were rumors in 1978 that a new garbage incinerator would be built, and it was assumed that the construction and operation of the incinerator would have a negative impact on the value of homes located nearby. Therefore, it was hypothesized that the value of certain homes near the incinerator would be negatively affected. This dataset comprises a random sample of house prices that were sold in 1978 as compared to those sold in 1981.
+
+
+> **HYPOTHESIS 1: Home values decrease near a garbage incinerator relative to those located further away.**
+
+$$
+\beta_{i} < 0, \ \ i = 1
+$$
+
+
+## Data
+
+
+
+
+ **Variable name**       | **Description    **                                   
+------------------------ | -----------------------------------------------------
+year:                    | 1978 or 1981  
+age:                     | age of the house
+agesq:                   | age^2
+nbh:                     | neighborhood, 1-6
+cbd:                     | dist. to cent. bus. dstrct, ft
+intst:                   | dist. to interstate, ft.
+lintst:                  | log(intst)
+price:                   | selling price
+rooms:                   | # rooms in house
+area:                    | square footage of house
+land:                    | square footage lot
+baths:                   | # bathrooms
+dist:                    | dist. from house to incin., ft.
+ldist:                   | log(dist)
+wind:                    | prc. time wind incin. to house
+lprice:                  | log(price)
+y81:                     | =1 if year == 1981
+larea:                   | log(area)
+lland:                   | log(land)
+y81ldist:                | y81*ldist
+lintstsq:                | lintst^2
+nearinc:                 | =1 if dist <= 15840
+y81nrinc:                | y81*nearinc
+rprice:                  | price, 1978 dollars
+lrprice:                 | log(rprice)
+
+
+
+```{r}
+# This removes everything from the R environment
+rm(list = ls())
+# Call the dataset from the Wooldridge package
+data('kielmc')
+# Name the data as df
+df<-kielmc
+
+
+```
+
+
+```{r, fig.cap="Figure 1", fig.align='center'}
+
+mean_price<-mean(df$price)
+median_price<-median(df$price)
+ggplot(df) +
+  aes(x = price) +
+  geom_histogram(bins = 30L, fill = "#345178", col = "white") +
+  geom_vline(xintercept = mean_price, linewidth = 2, linetype = 5)+
+  geom_vline(xintercept = median_price, linewidth = 4, color = "red")+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())+
+  scale_x_continuous(labels = scales::dollar_format())+
+  labs(x = "Price of House",
+       title = "House Prices in the Area")+
+  theme(panel.grid.minor = element_blank())+
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+\
+
+
+
+```{r,fig.cap="Figure 2", fig.align='center'}
+
+df %>%
+  mutate(
+    intervention = ifelse(nearinc == 1, "Near the Garbage Incinerator",
+                          "Not Near the Garbage Incinerator")
+  ) %>%
+  ggplot(.,
+         aes(x = price,
+             y = intervention,
+             fill = intervention)) +
+  stat_density_ridges(quantile_lines = TRUE, quantiles = 2, scale = 3, color = "white")+
+  scale_fill_manual(values = c("#00204D", "#D8D4B7"), guide = "none") + 
+  scale_x_continuous(labels = scales::dollar_format())+
+  labs(x = "Price of House",
+       y = "Intervention")+
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())
+
+```
+
+
+\
+
+
+
+\
+
+
+```{r,fig.cap="Figure 3", fig.align='center'}
+
+out<-df %>%
+  group_by(nearinc,year)%>%
+  summarise(
+    avg_price = mean(price,na.rm=T),
+    median = median(price,na.rm=T)
+  )
+
+
+ggplot(out) +
+  aes(
+    x = year,
+    y = avg_price,
+    fill = nearinc,
+    group = nearinc
+  ) +
+  geom_tile() +
+  scale_fill_gradient() +
+  scale_y_continuous(labels=scales::dollar_format())+
+  theme_minimal()+
+  labs(title = "Average House price relative to Incinerator between 1978 and 1981 ",
+       x = "Year", y = "Average Home Price") +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=12))
+
+```
+
+
+\
+
+The data presented in **Figure 1** provides valuable insights into the pricing patterns in the area. The chart indicates that the distribution of house prices is skewed towards the right, with a long tail. The vertical black and red lines on the chart suggest that the mean value of house prices is higher than the median value. These observations can help us understand how the prices of houses are determined in the area.
+
+**Figure 2** presents some interesting findings regarding the distribution of prices by intervention. The graph displays the median using the white vertical line. It is surprising to note that the most expensive house is located near the garbage incinerator, which indicates that the incinerator was placed in an area with lower home values.
+
+**Figure 3** highlights a significant difference in the average home value for houses located near the incinerator. The data indicates that even before the construction of the incinerator, there was a visible difference in the value of houses situated near it. These findings can help us understand the impact of the incinerator on the value of properties in the area.
+
+
+## Initial Model
+
+```{r, results='asis'}
+
+reg1<-lm( price ~ nearinc, data=df )
+reg2<-lm( price ~ nearinc*y81, data=df )
+reg3<-lm( price ~ nearinc*y81+age+agesq, data=df )
+msummary(list(reg1,reg2,reg3), vcov = "HC1",
+         stars = c('*' = .1, '**' = .05, '***' = .01))
+```
+
+
+
+
+\
+
+
+We wee that our third model with additional controls, gives a different estimate with decreased standard errors on the interaction between nearinc and y81. For the second model, we will use log prices instead to get the percentage change instead.
+
+## Second Model
+
+```{r, results='asis'}
+
+reg1<-lm( log(price) ~ nearinc, data=df )
+reg2<-lm( log(price) ~ nearinc*y81, data=df )
+reg3<-lm( log(price) ~ nearinc*y81+age+agesq, data=df )
+msummary(list(reg1,reg2,reg3), vcov = "HC1",
+         stars = c('*' = .1, '**' = .05, '***' = .01))
+```
+
+
+
+
+Here we can see that the interaction between year 1981 and being near the garbage incinerator in model 3 decrease home value by almost **19%**. We do have additional variables to include as controls. A selection model like the LASSO, would be great to use. This model is a Penalized Regression.
+
+
+>**What else could we include as controls for our model?**
+
+
+
+## LASSO Regression Variable Selection
+
+
+
+```{r}
+
+library(tidymodels)
+df_split <- initial_split(df, strata = nearinc)
+df_train <- training(df_split)
+df_test <- testing(df_split)
+
+
+```
+
+
+To predict, it is necessary to separate the data into a training and testing dataset. However, it's important to consider the skewed data in the price of housing. Also, we should be interested only in the variables that significantly affect the price of housing. To ensure that we have balance in price between the training and testing data, we can use the stata input in the initial_split function.
+
+
+
+
+
+
+```{r}
+
+
+office_rec <- recipe(lprice ~ ., data = df_train) %>%
+  step_rm(lrprice, rprice, price)%>%
+  step_zv(all_numeric(), -all_outcomes()) %>%
+  step_normalize(all_numeric(), -all_outcomes())
+
+office_prep <- office_rec %>%
+  prep(strings_as_factors = FALSE)
+
+
+```
+
+
+
+
+```{r}
+
+lasso_spec <- linear_reg(penalty = 0.1, mixture = 1) %>%
+  set_engine("glmnet")
+
+wf <- workflow() %>%
+  add_recipe(office_rec)
+
+lasso_fit <- wf %>%
+  add_model(lasso_spec) %>%
+  fit(data = df_train)
+
+lasso_fit %>%
+  pull_workflow_fit() %>%
+  tidy()
+
+
+```
+
+
+```{r}
+
+
+set.seed(1234)
+office_boot <- bootstraps(df_train, strata = nearinc)
+
+tune_spec <- linear_reg(penalty = tune(), mixture = 1) %>%
+  set_engine("glmnet")
+
+lambda_grid <- grid_regular(penalty(), levels = 50)
+
+
+```
+
+
+
+```{r}
+
+doParallel::registerDoParallel()
+
+set.seed(2020)
+lasso_grid <- tune_grid(
+  wf %>% add_model(tune_spec),
+  resamples = office_boot,
+  grid = lambda_grid
+)
+
+
+
+
+```
+
+
+
+
+```{r}
+
+lasso_grid %>%
+  collect_metrics() %>%
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_errorbar(aes(
+    ymin = mean - std_err,
+    ymax = mean + std_err
+  ),
+  alpha = 0.5
+  ) +
+  geom_line(size = 1.5) +
+  facet_wrap(~.metric, scales = "free", nrow = 2) +
+  scale_x_log10() +
+  theme(legend.position = "none")
+
+
+
+```
+
+
+```{r}
+
+
+lowest_rmse <- lasso_grid %>%
+  select_best("rmse", maximize = FALSE)
+
+final_lasso <- finalize_workflow(
+  wf %>% add_model(tune_spec),
+  lowest_rmse
+)
+
+library(vip)
+
+final_lasso %>%
+  fit(df_train) %>%
+  pull_workflow_fit() %>%
+  vi(lambda = lowest_rmse$penalty) %>%
+  mutate(
+    Importance = abs(Importance),
+    Variable = fct_reorder(Variable, Importance)
+  ) %>%
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col() +
+  scale_x_continuous(expand = c(0, 0)) +
+  labs(y = NULL)
+
+```
+
+
+
+```{r, results='asis'}
+
+reg1<-lm( price ~ nearinc, data=df )
+reg2<-lm( price ~ nearinc*y81, data=df )
+reg3<-lm( price ~ nearinc*y81+rprice+y81ldist, data=df )
+msummary(list(reg1,reg2,reg3), vcov = "HC1",
+         stars = c('*' = .1, '**' = .05, '***' = .01))
+```
+
+
+
+## Part 2
+
+
+
+
+```{r}
+
+library(glmnet)
+library(coefplot)
+library(useful)
+
+
+```
+
+
+
+```{r}
+
+landX_train<-build.x(lprice ~ .-1-lrprice-rprice-price, data = df,
+                     contrasts = FALSE, sparse = TRUE)
+
+landY_train<-build.y(lprice ~ .-1-lrprice-rprice-price, data = df)
+
+value2<-glmnet(x = landX_train, y = landY_train, family = "gaussian")
+```
+
+
+```{r}
+coefpath(value2)
+
+```
+
+
+
+
+
+```{r}
+
+
+value3<-cv.glmnet(x = landX_train, y = landY_train, family = 'gaussian', nfolds = 10)
+
+
+coefpath(value3)
+
+```
+
+
+
+
+```{r}
+
+coefplot(value3, sort= 'magnitude', lambda = "lambda.1se")
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+<br>
+
+-----
+
+<br>
+
+
+
+```{css, echo=F}
+body{
+     font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+     font-size:calc(1.5em + 0.25vw);
+     font-weight:300;line-height:1.65;
+     -webkit-font-smoothing:antialiased;
+     -moz-osx-font-smoothing:grayscale;
+     margin-left:20%;
+     margin-right:20%} 
+     
+
+h1, h2, h3, h4 { color: #003B62; }
+
+h2 { margin-top:80px; }
+
+
+
+.footer {
+  background-color:#726e6e;
+  height:340px;
+  color:white;
+  padding: 20px 3px 20px 3px;
+  margin:0px;
+  line-height: normal;
+}
+
+.footer a{ color:orange; text-decoration:bold !important; } 
+ 
+ 
+ 
+ table{
+   border-spacing:1px;
+   margin-top:80px;
+   margin-bottom:100px !important;
+   margin-left: auto;
+   margin-right: auto;
+   align:center} 
+
+
+ 
+td{ padding: 6px 10px 6px 10px } 
+
+th{ text-align: left; } 
+
+blockquote {
+    margin-top:80px;
+    border-left: 5px solid #003B62;
+    color: #ff6f3c;
+}
+```
+
+
+
+

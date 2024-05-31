@@ -761,10 +761,10 @@ output$plot1 <- renderPlot({
   abline(v=1988, col = "black",pch = 20, cex = 1, lwd = 2)
   segments( x0=1984, y0=95, x1=1985, y1=95, col="#00204D", lwd = 3 )
   points( x=c(1984,1985), y=c(95,95), col="#00204D", pch=20, cex=1.8 )
-  text(x = 1986, y = 96, labels = substitute(paste(bold('Control'))), cex = 1.5)
-  segments( x0=1984, y0=90, x1=1985, y1=90, col="firebrick", lwd = 3)
-  points( x=c(1984,1985), y=c(90,90), col="firebrick", pch=20, cex=1.8 )
-  text(x = 1986, y = 90, labels = substitute(paste(bold('Treatment'))), cex = 1.5)
+  text(x = 1986.5, y = 96, labels = substitute(paste(bold('Control'))), cex = 1.5)
+  segments( x0=1984, y0=85, x1=1985, y1=85, col="firebrick", lwd = 3)
+  points( x=c(1984,1985), y=c(85,85), col="firebrick", pch=20, cex=1.8 )
+  text(x = 1987, y = 85, labels = substitute(paste(bold('Treatment'))), cex = 1.5)
   
   
 })
@@ -804,11 +804,11 @@ output$plot2<-renderPlot({
         labels=c("Pre-intervention",
         "Post-intervention" ) )
   
-  text( 1.1, T2+9, "Treatment Group", col="#00204D", pos=4, cex=1 )
-  text( 1.1, C2+9, "Comparison Group", col="firebrick", pos=4, cex=1 )
+  text( 1.1, T2+5, "Treatment Group", col="#00204D", pos=4, cex=1 )
+  text( 1.1, C2+16, "Comparison Group", col="firebrick", pos=4, cex=1 )
   
   text( -0.1, T1, expression(paste(beta[0] + beta[1])), col="#00204D", pos=2, cex = 2 )
-  text( 1.1, T2, expression(paste(beta[0] + beta[1] + beta[2] + beta[3])), col="#00204D", pos=4, cex=2 )
+  text( 1.1, T2-10, expression(paste(beta[0] + beta[1] + beta[2] + beta[3])), col="#00204D", pos=4, cex=2 )
   text( -0.1, C1, expression(paste(beta[0])), col="firebrick", pos=2, cex = 2 )
   text( 1.1, C2, expression(paste(beta[0] + beta[2])), col="firebrick", pos=4, cex=2 )
 
@@ -819,7 +819,7 @@ output$plot2<-renderPlot({
   segments( x0=0.1, x1=0.9, y0=T1+1, y1=CF-1, col=cf.col, lwd=1, lty=2 )
   text( 1, CF, CF, col=cf.col, cex=1.5 )
   text( 1.1, CF+9, "Counterfactual", col=cf.col, pos=4, cex=1 )
-  text( 1.1, CF, expression(paste(beta[0] + beta[1] + beta[2])), col=cf.col, pos=4, cex=2 )
+  text( 1.1, CF-5, expression(paste(beta[0] + beta[1] + beta[2])), col=cf.col, pos=4, cex=2 )
   
 })
 

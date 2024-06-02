@@ -764,7 +764,7 @@ output$plot1 <- renderPlot({
   text(x = 1986.5, y = 96, labels = substitute(paste(bold('Control'))), cex = 1.5)
   segments( x0=1984, y0=85, x1=1985, y1=85, col="firebrick", lwd = 3)
   points( x=c(1984,1985), y=c(85,85), col="firebrick", pch=20, cex=1.8 )
-  text(x = 1987, y = 85, labels = substitute(paste(bold('Treatment'))), cex = 1.5)
+  text(x = 1986.5, y = 85, labels = substitute(paste(bold('Treatment'))), cex = 1.5)
   
   
 })

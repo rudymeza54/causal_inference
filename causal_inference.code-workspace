@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"name": "causal_inference",
+			"path": "."
+		}
+	],
+	"settings": {}
+}

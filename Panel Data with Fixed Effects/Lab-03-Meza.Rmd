@@ -46,6 +46,7 @@ Remember to:
 # The policy problem
 
 > **Research question**: 
+
 > Do beer taxes affect car accidents at night time?
 
 For this lab, we want to consider the effect of beer taxes on mortality rates due to car accidents during night time. There has been several studies examining how [state policies aiming to control alcohol consumption affect car accidents](https://www.sciencedirect.com/science/article/pii/S0167629696004900). Beer taxes are a way for states to control consumption of alcohol; higher beer taxes increase prices, which in turn decrease consumption. Lower consumption of alcohol is expected to decrease drunk driving and therefore accidents, especially at nigth time.
